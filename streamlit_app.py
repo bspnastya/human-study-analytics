@@ -21,23 +21,56 @@ def load_sheet() -> pd.DataFrame:
     sheet = gspread.authorize(creds).open("human_study_results").sheet1
     raw   = sheet.get_all_values()
 
-    cols = ["timestamp","Пользователь","qnum","image_id","Алгоритм","Тип",
-            "Вопрос","Ответ","Правильный_ответ","time_ms","is_correct"]
 
-    if raw and [c.lower() for c in raw[0][:len(cols)]] == [c.lower() for c in cols]:
-        raw = raw[1:]
+    base_cols = ["timestamp","Пользователь","qnum","image_id","Алгоритм","Тип",
+                 "Вопрос","Ответ","Правильный_ответ","time_ms","is_correct"]
 
-    df = pd.DataFrame(raw, columns=cols)
+   
+    if not raw:
+        return pd.DataFrame(columns=base_cols)
+
+  
+    num_cols = len(raw[0]) if raw else 0
+    
+
+    if num_cols > len(base_cols):
+       
+        cols = base_cols + ["session_id"]
+      
+        if num_cols > len(cols):
+            cols += [f"col_{i}" for i in range(len(cols), num_cols)]
+    else:
+        cols = base_cols[:num_cols]
 
 
+    has_header = False
+    if raw and len(raw[0]) >= len(base_cols):
+       
+        first_row_lower = [str(c).lower() for c in raw[0][:min(3, len(raw[0]))]]
+        expected_lower = [c.lower() for c in base_cols[:min(3, len(base_cols))]]
+        if first_row_lower == expected_lower:
+            has_header = True
+            raw = raw[1:]
+
+
+    df = pd.DataFrame(raw, columns=cols[:num_cols])
+    
+   
+    for col in base_cols:
+        if col not in df.columns:
+            df[col] = None
+
+    
     df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
     df = df.dropna(subset=["timestamp"])
 
     df["time_ms"]    = pd.to_numeric(df["time_ms"], errors="coerce")
     df["Время_сек"]  = df["time_ms"] / 1000
-    df["is_correct"] = df["is_correct"].astype(str).str.upper().eq("TRUE")
+    
+  
+    df["is_correct"] = df["is_correct"].astype(str).str.strip().str.upper().isin(["TRUE", "1", "YES"])
 
-   
+    
     full_users = (
         df.groupby("Пользователь")["qnum"]
           .count()
@@ -48,7 +81,14 @@ def load_sheet() -> pd.DataFrame:
 
     return df
 
-df_raw = load_sheet()
+
+try:
+    df_raw = load_sheet()
+except Exception as e:
+    st.error(f"Ошибка при загрузке данных: {str(e)}")
+    st.info("Попробуйте обновить страницу через несколько секунд")
+    st.stop()
+
 if df_raw.empty:
     st.warning("Нет пользователей, прошедших тест полностью.")
     st.stop()
@@ -66,6 +106,7 @@ quest_sel = st.sidebar.multiselect(
 date_min, date_max = df_raw["timestamp"].dt.date.agg(["min", "max"])
 date_from = st.sidebar.date_input("Дата от", date_min)
 date_to   = st.sidebar.date_input("Дата до", date_max)
+
 
 mask = pd.Series(True, index=df_raw.index)
 
@@ -98,6 +139,7 @@ st.divider()
 
 
 if total:
+
     q99 = df["Время_сек"].quantile(0.99)
     fig = px.histogram(df.query("Время_сек <= @q99"),
                        x="Время_сек", nbins=20,
@@ -105,6 +147,7 @@ if total:
                        labels={"Время_сек":"время, с","count":"Количество"})
     st.plotly_chart(fig, use_container_width=True)
 
+    
     st.subheader("Пользователи")
     perf = (df.groupby("Пользователь")
               .agg(Ответов=("qnum","count"),
@@ -114,15 +157,49 @@ if total:
     perf["Точность"] = perf["Точность"].mul(100).round(1)
     perf["Ср_время"] = perf["Ср_время"].round(2)
     st.dataframe(perf, use_container_width=True)
+    
+ 
+    if "Алгоритм" in df.columns and df["Алгоритм"].notna().any():
+        st.subheader("Статистика по алгоритмам")
+        alg_stats = (df.groupby("Алгоритм")
+                      .agg(Ответов=("qnum","count"),
+                           Точность=("is_correct","mean"),
+                           Ср_время=("Время_сек","mean"))
+                      .reset_index())
+        alg_stats["Точность"] = alg_stats["Точность"].mul(100).round(1)
+        alg_stats["Ср_время"] = alg_stats["Ср_время"].round(2)
+        
+      
+        fig_alg = px.bar(alg_stats, x="Алгоритм", y="Точность",
+                         title="Точность ответов по алгоритмам",
+                         labels={"Точность": "Точность, %"})
+        st.plotly_chart(fig_alg, use_container_width=True)
+        
+        st.dataframe(alg_stats, use_container_width=True)
 else:
     st.info("Нет данных под выбранные фильтры.")
 
 
 st.subheader("Данные")
+
+
+csv = df.to_csv(index=False).encode('utf-8-sig') 
 st.download_button("💾 Скачать CSV",
-                   df.to_csv(index=False).encode(),
+                   csv,
                    "human_study_results.csv",
                    "text/csv",
                    disabled=not total)
-st.dataframe(df, use_container_width=True, height=500)
 
+
+display_cols = ["timestamp", "Пользователь", "qnum", "Алгоритм", "Тип", 
+                "Вопрос", "Ответ", "Правильный_ответ", "Время_сек", "is_correct"]
+
+if "session_id" in df.columns:
+    display_cols.append("session_id")
+
+
+display_cols = [col for col in display_cols if col in df.columns]
+
+st.dataframe(df[display_cols], use_container_width=True, height=500)
+
+st.caption(f"Данные обновляются каждые {REFRESH_SEC} секунд")
