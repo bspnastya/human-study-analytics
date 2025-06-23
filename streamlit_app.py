@@ -132,7 +132,7 @@ fig_alg = px.bar(alg_stats, x="Алгоритм", y="Точность",
                  title="Точность ответов по алгоритмам",
                  labels={"Точность":"Точность, %"})
 st.plotly_chart(fig_alg, use_container_width=True)
-fig_dz = px.bar(alg_stats, x="Алгоритм", y="Затрудн",
+fig_dz = px.bar(alg_stats, x="Алгоритм", y="Затрудняюсь",
                 title="«Затрудняюсь» по алгоритмам",
                 labels={"Затрудняюсь":"Кол-во"})
 st.plotly_chart(fig_dz, use_container_width=True)
