@@ -112,7 +112,7 @@ perf = (df.groupby("Пользователь")
           .agg(Ответов=("qnum","count"),
                Точность=("is_correct","mean"),
                Ср_время=("Время_сек","mean"),
-               Затрудн =("Ответ",lambda s:(s.str.lower().str.startswith("затруд")).sum()))
+               Затрудняюсь =("Ответ",lambda s:(s.str.lower().str.startswith("затруд")).sum()))
           .reset_index())
 perf["Точность"] = (perf["Точность"]*100).round(1)
 perf["Ср_время"] = perf["Ср_время"].round(2)
@@ -124,7 +124,7 @@ alg_stats = (df.groupby("Алгоритм")
                .agg(Ответов=("qnum","count"),
                     Точность=("is_correct","mean"),
                     Ср_время=("Время_сек","mean"),
-                    Затрудн =("Ответ",lambda s:(s.str.lower().str.startswith("затруд")).sum()))
+                    Затрудняюсь =("Ответ",lambda s:(s.str.lower().str.startswith("затруд")).sum()))
                .reset_index())
 alg_stats["Точность"] = (alg_stats["Точность"]*100).round(1)
 alg_stats["Ср_время"] = alg_stats["Ср_время"].round(2)
@@ -134,7 +134,7 @@ fig_alg = px.bar(alg_stats, x="Алгоритм", y="Точность",
 st.plotly_chart(fig_alg, use_container_width=True)
 fig_dz = px.bar(alg_stats, x="Алгоритм", y="Затрудн",
                 title="«Затрудняюсь» по алгоритмам",
-                labels={"Затрудн":"Кол-во"})
+                labels={"Затрудняюсь":"Кол-во"})
 st.plotly_chart(fig_dz, use_container_width=True)
 st.dataframe(alg_stats, use_container_width=True)
 
@@ -144,7 +144,7 @@ pic_stats = (df.groupby("image_id")
                .agg(Ответов=("qnum","count"),
                     Точность=("is_correct","mean"),
                     Ср_время=("Время_сек","mean"),
-                    Затрудн =("Ответ",lambda s:(s.str.lower().str.startswith("затруд")).sum()))
+                    Затрудняюсь =("Ответ",lambda s:(s.str.lower().str.startswith("затруд")).sum()))
                .reset_index())
 pic_stats["Точность"] = (pic_stats["Точность"]*100).round(1)
 pic_stats["Ср_время"] = pic_stats["Ср_время"].round(2)
