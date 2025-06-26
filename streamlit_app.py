@@ -156,36 +156,33 @@ st.subheader("Буквенные вопросы: точность первого
 
 letters = df[df["Тип"] == "letters"].copy()
 if not letters.empty:
-   
     letters["Правильный_ответ"] = letters["Правильный_ответ"].str.strip().str.lower()
 
-  
     first = (letters.sort_values("timestamp")
-                   .groupby(["Пользователь", "Правильный_ответ"], as_index=False)
-                   .first())       
+                     .groupby(["Пользователь","Правильный_ответ"], as_index=False)
+                     .first())
 
-
-    stat = (first.groupby(["Правильный_ответ", "Алгоритм"])
-                   .agg(Users       = ("Пользователь", "count"),
-                        Correctness = ("is_correct", "mean"))
+    stat = (first.groupby(["Правильный_ответ","Алгоритм"])
+                   .agg(Пользователей=("Пользователь","count"),
+                        Точность      =("is_correct","mean"))
                    .reset_index())
-    stat["Correctness"] = (stat["Correctness"] * 100).round(1)
+    stat["Точность"] = (stat["Точность"]*100).round(1)
 
     cats = sorted(stat["Правильный_ответ"].unique())
     sel  = st.radio("Категория букв", cats, horizontal=True, key="letter_cat")
 
     sub  = stat[stat["Правильный_ответ"] == sel].sort_values("Алгоритм")
+
     st.plotly_chart(
-        px.bar(sub, x="Алгоритм", y="Correctness", text="Users",
+        px.bar(sub, x="Алгоритм", y="Точность", text="Пользователей",
                title=f"Первая встреча «{sel.upper()}»: средняя корректность",
-               labels={"Correctness":"Точность, %", "Users":"Пользователей"}),
+               labels={"Точность":"Точность, %", "Пользователей":"Пользователей"}),
         use_container_width=True)
 
-    st.dataframe(sub.rename(columns={"Users":"Пользователей",
-                                     "Correctness":"Точность, %"}),
-                 use_container_width=True)
+    st.dataframe(sub, use_container_width=True)
 else:
     st.info("В данных нет вопросов с буквами.")
+
 
 
 
