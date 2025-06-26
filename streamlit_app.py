@@ -168,7 +168,7 @@ if not letters.empty:
     stat["Точность"] = (stat["Точность"]*100).round(1)
 
     st.plotly_chart(px.bar(stat, x="Алгоритм", y="Точность", text="Пользователей",
-                           title="Средняя точность первого ответа (все буквы)",
+                           title="Средняя точность по первому вхождению",
                            labels={"Точность":"Точность, %", "Пользователей":"Пользователей"}),
                     use_container_width=True)
     st.dataframe(stat, use_container_width=True)
