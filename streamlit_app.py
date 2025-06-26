@@ -150,6 +150,30 @@ pic_stats["Точность"] = (pic_stats["Точность"]*100).round(1)
 pic_stats["Ср_время"] = pic_stats["Ср_время"].round(2)
 st.dataframe(pic_stats, use_container_width=True, height=350)
 
+st.subheader("Буквенные вопросы: корректность первого ответа")
+
+letters = df[df["Тип"]=="letters"].copy()
+if len(letters):
+    letters = (letters.sort_values("timestamp")
+               .groupby(["Пользователь","Правильный_ответ"], as_index=False)
+               .first())
+
+    stats = (letters.groupby(["Правильный_ответ","Алгоритм"])
+                      .agg(Correctness=("is_correct","mean"))
+                      .reset_index())
+    stats["Correctness"] = (stats["Correctness"]*100).round(1)
+
+    categories = sorted(stats["Правильный_ответ"].unique())
+    sel = st.radio("Категория букв", categories, horizontal=True)
+
+    sub = stats[stats["Правильный_ответ"]==sel]
+    st.plotly_chart(px.bar(sub, x="Алгоритм", y="Correctness",
+                           title=f"Средняя корректность первого ответа – «{sel}»",
+                           labels={"Correctness":"Точность, %"}),
+                    use_container_width=True)
+    st.dataframe(sub[["Алгоритм","Correctness"]], use_container_width=True)
+else:
+    st.info("В данных нет вопросов типа «буквы».")
 
 st.subheader("Данные")
 csv = df.to_csv(index=False).encode("utf-8-sig")
