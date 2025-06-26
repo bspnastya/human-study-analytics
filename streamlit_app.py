@@ -175,7 +175,7 @@ if not letters.empty:
 
     st.plotly_chart(
         px.bar(sub, x="Алгоритм", y="Точность", text="Пользователей",
-               title=f"Первая встреча «{sel.upper()}»: средняя корректность",
+               title=f"Первая встреча «{sel.upper()}»: средняя точность",
                labels={"Точность":"Точность, %", "Пользователей":"Пользователей"}),
         use_container_width=True)
 
