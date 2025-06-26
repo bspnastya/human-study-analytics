@@ -175,9 +175,8 @@ if not letters.empty:
     sel  = st.radio("Категория букв", cats, horizontal=True, key="letter_cat")
 
     sub  = stat[stat["Правильный_ответ"] == sel].sort_values("Алгоритм")
-
     st.plotly_chart(
-        px.bar(sub, x="Алгоритм", y="Точность", text="Users",
+        px.bar(sub, x="Алгоритм", y="Correctness", text="Users",
                title=f"Первая встреча «{sel.upper()}»: средняя корректность",
                labels={"Correctness":"Точность, %", "Users":"Пользователей"}),
         use_container_width=True)
