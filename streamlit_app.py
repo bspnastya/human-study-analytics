@@ -152,38 +152,28 @@ st.dataframe(pic_stats, use_container_width=True, height=350)
 
 
 
-st.subheader("Буквенные вопросы: точность первого показа по алгоритмам")
+st.subheader("Буквенные вопросы: средняя точность первого показа по алгоритмам")
 
-letters = df[df["Тип"] == "letters"].copy()
+
+letters = df[df["Тип"] == "letters"]
 if not letters.empty:
-    letters["Правильный_ответ"] = letters["Правильный_ответ"].str.strip().str.lower()
-
+    letters = letters.assign(Правильный_ответ=lambda d: d["Правильный_ответ"].str.strip().str.lower())
     first = (letters.sort_values("timestamp")
-                     .groupby(["Пользователь","Правильный_ответ"], as_index=False)
+                     .groupby(["Пользователь", "Правильный_ответ"], as_index=False)
                      .first())
-
-    stat = (first.groupby(["Правильный_ответ","Алгоритм"])
-                   .agg(Пользователей=("Пользователь","count"),
-                        Точность      =("is_correct","mean"))
-                   .reset_index())
+    stat = (first.groupby("Алгоритм")
+                  .agg(Пользователей=("Пользователь","count"),
+                       Точность=("is_correct","mean"))
+                  .reset_index())
     stat["Точность"] = (stat["Точность"]*100).round(1)
 
-    cats = sorted(stat["Правильный_ответ"].unique())
-    sel  = st.radio("Категория букв", cats, horizontal=True, key="letter_cat")
-
-    sub  = stat[stat["Правильный_ответ"] == sel].sort_values("Алгоритм")
-
-    st.plotly_chart(
-        px.bar(sub, x="Алгоритм", y="Точность", text="Пользователей",
-               title=f"Первая встреча «{sel.upper()}»: средняя точность",
-               labels={"Точность":"Точность, %", "Пользователей":"Пользователей"}),
-        use_container_width=True)
-
-    st.dataframe(sub, use_container_width=True)
+    st.plotly_chart(px.bar(stat, x="Алгоритм", y="Точность", text="Пользователей",
+                           title="Средняя точность первого ответа (все буквы)",
+                           labels={"Точность":"Точность, %", "Пользователей":"Пользователей"}),
+                    use_container_width=True)
+    st.dataframe(stat, use_container_width=True)
 else:
-    st.info("В данных нет вопросов с буквами.")
-
-
+    st.info("В данных нет вопросов типа «буквы».")
 
 
 st.subheader("Данные")
