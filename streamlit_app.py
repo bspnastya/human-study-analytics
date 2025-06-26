@@ -175,7 +175,7 @@ if len(letters):
                       .sort_values("Алгоритм")
 
     st.plotly_chart(
-        px.bar(sub, x="Алгоритм", y="Correctness",
+        px.bar(sub, x="Алгоритм", y="Точность",
                title=f"Средняя корректность первого ответа — «{sel}»",
                text="Users",
                labels={"Correctness":"Точность, %", "Users":"Пользователей"}),
