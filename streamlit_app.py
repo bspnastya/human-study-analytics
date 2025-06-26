@@ -150,30 +150,42 @@ pic_stats["Точность"] = (pic_stats["Точность"]*100).round(1)
 pic_stats["Ср_время"] = pic_stats["Ср_время"].round(2)
 st.dataframe(pic_stats, use_container_width=True, height=350)
 
-st.subheader("Буквенные вопросы: корректность первого ответа")
 
-letters = df[df["Тип"]=="letters"].copy()
+st.subheader("Буквенные вопросы (первая встреча картинки из категории): корректность по алгоритмам")
+
+letters = df[df["Тип"] == "letters"].copy()
 if len(letters):
-    letters = (letters.sort_values("timestamp")
-               .groupby(["Пользователь","Правильный_ответ"], as_index=False)
-               .first())
+    
+    first_seen = (letters.sort_values("timestamp")
+                         .groupby(["Пользователь", "Правильный_ответ"], as_index=False)
+                         .first())           
 
-    stats = (letters.groupby(["Правильный_ответ","Алгоритм"])
-                      .agg(Correctness=("is_correct","mean"))
-                      .reset_index())
-    stats["Correctness"] = (stats["Correctness"]*100).round(1)
+ 
+    stat_first = (first_seen.groupby(["Правильный_ответ", "Алгоритм"])
+                              .agg(Users=("Пользователь","count"),
+                                   Correctness=("is_correct","mean"))
+                              .reset_index())
+    stat_first["Correctness"] = (stat_first["Correctness"]*100).round(1)
 
-    categories = sorted(stats["Правильный_ответ"].unique())
-    sel = st.radio("Категория букв", categories, horizontal=True)
+   
+    cats = sorted(stat_first["Правильный_ответ"].unique())
+    sel  = st.radio("Категория букв", cats, horizontal=True, key="letter_cat")
 
-    sub = stats[stats["Правильный_ответ"]==sel]
-    st.plotly_chart(px.bar(sub, x="Алгоритм", y="Correctness",
-                           title=f"Средняя корректность первого ответа – «{sel}»",
-                           labels={"Correctness":"Точность, %"}),
-                    use_container_width=True)
-    st.dataframe(sub[["Алгоритм","Correctness"]], use_container_width=True)
+    sub  = stat_first[stat_first["Правильный_ответ"] == sel]\
+                      .sort_values("Алгоритм")
+
+    st.plotly_chart(
+        px.bar(sub, x="Алгоритм", y="Correctness",
+               title=f"Средняя корректность первого ответа — «{sel}»",
+               text="Users",
+               labels={"Correctness":"Точность, %", "Users":"Пользователей"}),
+        use_container_width=True)
+    st.dataframe(sub.rename(columns={"Users":"Пользователей",
+                                     "Correctness":"Точность, %"}),
+                 use_container_width=True)
 else:
     st.info("В данных нет вопросов типа «буквы».")
+
 
 st.subheader("Данные")
 csv = df.to_csv(index=False).encode("utf-8-sig")
