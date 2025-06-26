@@ -151,40 +151,43 @@ pic_stats["Ср_время"] = pic_stats["Ср_время"].round(2)
 st.dataframe(pic_stats, use_container_width=True, height=350)
 
 
-st.subheader("Буквенные вопросы (первая встреча картинки из категории): корректность по алгоритмам")
+
+st.subheader("Буквенные вопросы: точность первого показа по алгоритмам")
 
 letters = df[df["Тип"] == "letters"].copy()
-if len(letters):
-    
-    first_seen = (letters.sort_values("timestamp")
-                         .groupby(["Пользователь", "Правильный_ответ"], as_index=False)
-                         .first())           
-
- 
-    stat_first = (first_seen.groupby(["Правильный_ответ", "Алгоритм"])
-                              .agg(Users=("Пользователь","count"),
-                                   Correctness=("is_correct","mean"))
-                              .reset_index())
-    stat_first["Correctness"] = (stat_first["Correctness"]*100).round(1)
-
+if not letters.empty:
    
-    cats = sorted(stat_first["Правильный_ответ"].unique())
+    letters["Правильный_ответ"] = letters["Правильный_ответ"].str.strip().str.lower()
+
+  
+    first = (letters.sort_values("timestamp")
+                   .groupby(["Пользователь", "Правильный_ответ"], as_index=False)
+                   .first())       
+
+
+    stat = (first.groupby(["Правильный_ответ", "Алгоритм"])
+                   .agg(Users       = ("Пользователь", "count"),
+                        Correctness = ("is_correct", "mean"))
+                   .reset_index())
+    stat["Correctness"] = (stat["Correctness"] * 100).round(1)
+
+    cats = sorted(stat["Правильный_ответ"].unique())
     sel  = st.radio("Категория букв", cats, horizontal=True, key="letter_cat")
 
-    sub  = stat_first[stat_first["Правильный_ответ"] == sel]\
-                      .sort_values("Алгоритм")
+    sub  = stat[stat["Правильный_ответ"] == sel].sort_values("Алгоритм")
 
     st.plotly_chart(
-        px.bar(sub, x="Алгоритм", y="Точность",
-               title=f"Средняя корректность первого ответа — «{sel}»",
-               text="Users",
+        px.bar(sub, x="Алгоритм", y="Точность", text="Users",
+               title=f"Первая встреча «{sel.upper()}»: средняя корректность",
                labels={"Correctness":"Точность, %", "Users":"Пользователей"}),
         use_container_width=True)
+
     st.dataframe(sub.rename(columns={"Users":"Пользователей",
                                      "Correctness":"Точность, %"}),
                  use_container_width=True)
 else:
-    st.info("В данных нет вопросов типа «буквы».")
+    st.info("В данных нет вопросов с буквами.")
+
 
 
 st.subheader("Данные")
