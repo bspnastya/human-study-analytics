@@ -200,7 +200,7 @@ with tab1:
         melt["Этап"] = melt["Этап"].map({"Точность_1":"Этап 1","Точность_2":"Этап 2"})
 
         fig_cmp = px.bar(melt, x="Алгоритм", y="Точность", color="Этап",
-                         barmode="stack", text="Точность",
+                         barmode="group", text="Точность",
                          title="Буквенные вопросы: сравнение точности (Этап 1 vs Этап 2)",
                          labels={"Алгоритм":"Алгоритм","Точность":"Точность, %"})
         st.plotly_chart(fig_cmp, use_container_width=True)
