@@ -1,4 +1,4 @@
- from __future__ import annotations
+from __future__ import annotations
 import streamlit as st, pandas as pd, plotly.express as px
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
