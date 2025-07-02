@@ -218,7 +218,7 @@ with tab1:
 
 with tab2:
     df2_all = load_stage2()
-    if df2_all.empty():
+    if df2_all.empty:
         st.warning("Нет данных второго этапа.")
         st.stop()
 
