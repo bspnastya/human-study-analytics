@@ -5,13 +5,13 @@ from oauth2client.service_account import ServiceAccountCredentials
 from streamlit_autorefresh import st_autorefresh
 
 st.set_page_config("Аналитика исследования", "📊", layout="wide")
-REQ_ANS, REFRESH_SEC = 40, 30
+
+REQ_ANS        = 40         
+REFRESH_SEC    = 30         
 st_autorefresh(interval=REFRESH_SEC*1000, key="auto")
 
-tab1, tab2 = st.tabs([
-    "Этап 1: 40 вопросов",
-    "Этап 2: 15 вопросов"
-])
+tab1, tab2 = st.tabs(["Этап 1: 40 вопросов", "Этап 2: 15 вопросов"])
+
 
 
 def highlight_max(v, top="#2ECC71", base="#1f77b4"):
@@ -20,27 +20,27 @@ def highlight_max(v, top="#2ECC71", base="#1f77b4"):
 
 
 @st.cache_data(ttl=REFRESH_SEC, show_spinner="Обновляю данные…")
-def load_sheet() -> pd.DataFrame:
+def load_stage1() -> pd.DataFrame:
     scopes = ["https://spreadsheets.google.com/feeds",
               "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(
-        dict(st.secrets["gsp"]), scopes)
-    raw = gspread.authorize(creds).open("human_study_results").sheet1.get_all_values()
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gsp"]), scopes)
+    raw  = gspread.authorize(creds).open("human_study_results").sheet1.get_all_values()
+
     base = ["timestamp","Пользователь","qnum","image_id","Алгоритм","Тип",
             "Вопрос","Ответ","Правильный_ответ","time_ms","is_correct","session_id"]
     if not raw:
         return pd.DataFrame(columns=base)
     if raw[0][:3] == base[:3]:
         raw = raw[1:]
+
     df = pd.DataFrame(raw, columns=base[:len(max(raw, key=len))])
-    df["timestamp"] = pd.to_datetime(df["timestamp"], errors="coerce")
-    df = df.dropna(subset=["timestamp"])
-    df["time_ms"]  = pd.to_numeric(df["time_ms"], errors="coerce")
-    df["Время_сек"] = df["time_ms"] / 1000
-    df["is_correct"] = df["is_correct"].astype(str).str.strip() \
-                           .str.upper().isin(["TRUE","1","YES"])
-    full = df.groupby("Пользователь")["qnum"].count() \
-             .pipe(lambda s: s[s == REQ_ANS]).index
+    df["timestamp"]  = pd.to_datetime(df["timestamp"], errors="coerce")
+    df               = df.dropna(subset=["timestamp"])
+    df["time_ms"]    = pd.to_numeric(df["time_ms"], errors="coerce")
+    df["Время_сек"]  = df["time_ms"] / 1000
+    df["is_correct"] = df["is_correct"].astype(str).str.strip().str.upper().isin(["TRUE","1","YES"])
+
+    full = df.groupby("Пользователь")["qnum"].count().pipe(lambda s: s[s == REQ_ANS]).index
     return df[df["Пользователь"].isin(full)]
 
 
@@ -48,23 +48,20 @@ def load_sheet() -> pd.DataFrame:
 def load_stage2() -> pd.DataFrame:
     scopes = ["https://spreadsheets.google.com/feeds",
               "https://www.googleapis.com/auth/drive"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(
-        dict(st.secrets["gsp"]), scopes)
-    ws = gspread.authorize(creds) \
-           .open("human_study_results") \
-           .worksheet("stage2_log")
-    raw = ws.get_all_records()
-    df2 = pd.DataFrame(raw)
-    df2["timestamp"]  = pd.to_datetime(df2["timestamp"], errors="coerce")
-    df2["time_ms"]    = pd.to_numeric(df2["time_ms"], errors="coerce")
-    df2["Время_сек"]  = df2["time_ms"] / 1000
-    df2["is_correct"] = pd.Series(df2["is_correct"]).astype(str) \
-                             .str.strip().str.upper().isin(["TRUE","1","YES"])
-    return df2
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(dict(st.secrets["gsp"]), scopes)
+    raw = gspread.authorize(creds).open("human_study_results").worksheet("stage2_log").get_all_records()
+
+    df = pd.DataFrame(raw)
+    df["timestamp"]  = pd.to_datetime(df["timestamp"], errors="coerce")
+    df["time_ms"]    = pd.to_numeric(df["time_ms"], errors="coerce")
+    df["Время_сек"]  = df["time_ms"] / 1000
+    df["is_correct"] = df["is_correct"].astype(str).str.strip().str.upper().isin(["TRUE","1","YES"])
+    return df
+
 
 
 with tab1:
-    df_raw = load_sheet()
+    df_raw = load_stage1()
     if df_raw.empty:
         st.warning("Нет пользователей, прошедших тест полностью.")
         st.stop()
@@ -88,16 +85,16 @@ with tab1:
     df = df_raw[mask]
 
 
-    tot = len(df)
-    corr = df["is_correct"].mean()*100 if tot else 0
-    mean_t = df["Время_сек"].mean() if tot else 0
-    med_t  = df["Время_сек"].median() if tot else 0
-    dont   = df["Ответ"].str.lower().str.startswith("затруд").sum()
+    tot   = len(df)
+    corr  = df["is_correct"].mean()*100 if tot else 0
+    meanT = df["Время_сек"].mean() if tot else 0
+    medT  = df["Время_сек"].median() if tot else 0
+    dont  = df["Ответ"].astype(str).str.lower().str.startswith("затруд").sum()
     a,b,c,d,e = st.columns(5)
     a.metric("Всего ответов",   f"{tot:,}".replace(',',' '))
     b.metric("Корректность",    f"{corr:.1f}%")
-    c.metric("Среднее время",   f"{mean_t:.2f} с")
-    d.metric("Медианное время", f"{med_t:.2f} с")
+    c.metric("Среднее время",   f"{meanT:.2f} с")
+    d.metric("Медианное время", f"{medT:.2f} с")
     e.metric("«Затрудняюсь»",   f"{dont:,}".replace(',',' '))
     st.divider()
 
@@ -111,91 +108,145 @@ with tab1:
         px.histogram(df.query("Время_сек<=@q99"), x="Время_сек", nbins=20,
                      title="Распределение времени ответа",
                      labels={"Время_сек":"Время, с","count":"Количество"}),
-        use_container_width=True
-    )
+        use_container_width=True)
+
+
+    st.subheader("Пользователи")
+    perf = (df.groupby("Пользователь")
+              .agg(Ответов=("qnum","count"), Точность=("is_correct","mean"),
+                   Ср_время=("Время_сек","mean"),
+                   Затрудняюсь=("Ответ", lambda s:(s.str.lower().str.startswith("затруд")).sum()))
+              .reset_index())
+    perf["Точность"] = (perf["Точность"]*100).round(1)
+    perf["Ср_время"] = perf["Ср_время"].round(2)
+    st.dataframe(perf, use_container_width=True)
+
+
+    st.subheader("Статистика по алгоритмам")
+    alg = (df.groupby("Алгоритм")
+             .agg(Ответов=("qnum","count"), Точность=("is_correct","mean"),
+                  Ср_время=("Время_сек","mean"),
+                  Затрудняюсь=("Ответ", lambda s:(s.str.lower().str.startswith("затруд")).sum()))
+             .reset_index())
+    alg["Точность"] = (alg["Точность"]*100).round(1)
+    alg["Ср_время"] = alg["Ср_время"].round(2)
+
+    fig_alg = px.bar(alg, x="Алгоритм", y="Точность",
+                     title="Точность ответов по алгоритмам",
+                     labels={"Точность":"Точность, %"})
+    fig_alg.update_traces(marker_color=highlight_max(alg["Точность"]))
+    st.plotly_chart(fig_alg, use_container_width=True)
+
+    fig_dz = px.bar(alg, x="Алгоритм", y="Затрудняюсь",
+                    title="«Затрудняюсь» по алгоритмам",
+                    labels={"Затрудняюсь":"Кол-во"})
+    fig_dz.update_traces(marker_color=highlight_max(alg["Затрудняюсь"]))
+    st.plotly_chart(fig_dz, use_container_width=True)
+    st.dataframe(alg, use_container_width=True)
+
+    st.subheader("Статистика по изображениям")
+    pic = (df.groupby("image_id")
+             .agg(Ответов=("qnum","count"), Точность=("is_correct","mean"),
+                  Ср_время=("Время_сек","mean"),
+                  Затрудняюсь=("Ответ", lambda s:(s.str.lower().str.startswith("затруд")).sum()))
+             .reset_index())
+    pic["Точность"] = (pic["Точность"]*100).round(1)
+    pic["Ср_время"] = pic["Ср_время"].round(2)
+    st.dataframe(pic, use_container_width=True, height=350)
+
 
     st.subheader("Буквенные вопросы: средняя точность первого показа по алгоритмам")
-    letters = df[df["Тип"]=="letters"]
-    stat_letters1 = pd.DataFrame()
-    if not letters.empty:
-        first = (letters.sort_values("timestamp")
-                        .groupby(["Пользователь","image_id"], as_index=False)
-                        .first())
-        stat_letters1 = (first.groupby("Алгоритм")
-                              .agg(Пользователей=("Пользователь","count"),
-                                   Точность=("is_correct","mean"))
-                              .reset_index())
-        stat_letters1["Точность"]=(stat_letters1["Точность"]*100).round(1)
+    letters1 = df[df["Тип"]=="letters"]
+    if not letters1.empty:
+        first1 = (letters1.sort_values("timestamp")
+                           .groupby(["Пользователь","image_id"], as_index=False)
+                           .first())
+        stat1 = (first1.groupby("Алгоритм")
+                        .agg(Пользователей=("Пользователь","count"),
+                             Точность=("is_correct","mean"))
+                        .reset_index())
+        stat1["Точность"] = (stat1["Точность"]*100).round(1)
 
-        fig_letters1 = px.bar(stat_letters1, x="Алгоритм", y="Точность",
-                              text="Пользователей",
-                              title="Этап 1",
+        fig_letters1 = px.bar(stat1, x="Алгоритм", y="Точность", text="Пользователей",
+                              title="Средняя точность (Этап 1)",
                               labels={"Точность":"Точность, %","Пользователей":"Пользователей"})
-        fig_letters1.update_traces(marker_color=highlight_max(stat_letters1["Точность"]))
+        fig_letters1.update_traces(marker_color=highlight_max(stat1["Точность"]))
         st.plotly_chart(fig_letters1, use_container_width=True)
-        st.dataframe(stat_letters1, use_container_width=True)
+        st.dataframe(stat1, use_container_width=True)
     else:
-        st.info("В данных нет вопросов типа «буквы».")
+        stat1 = pd.DataFrame()
+        st.info("В данных нет вопросов типа «буквы» для этапа 1.")
 
-
+  
     df2_all = load_stage2()
-    cnt_ok  = df2_all.groupby("user")["qnum"].count()
-    df2     = df2_all[df2_all["user"].isin(cnt_ok[cnt_ok==15].index)]
-    df_l2   = df2[df2["qtype"]=="letters"].sort_values("timestamp")
-    df_l2   = df_l2.groupby(["user","group"], as_index=False).first()
-    stat_letters2 = (df_l2.groupby("alg")
-                           .agg(Пользователей=("user","nunique"),
-                                Точность=("is_correct","mean"))
-                           .reset_index())
-    stat_letters2["Точность"] = (stat_letters2["Точность"]*100).round(1)
+    full2   = df2_all.groupby("user")["qnum"].count()
+    df2     = df2_all[df2_all["user"].isin(full2[full2==15].index)]
 
-    if not stat_letters1.empty and not stat_letters2.empty:
-        comb = pd.merge(stat_letters1[["Алгоритм","Точность"]],
-                        stat_letters2[["alg","Точность"]].rename(columns={"alg":"Алгоритм","Точность":"Точность_2"}),
-                        on="Алгоритм", how="outer") \
-                   .rename(columns={"Точность":"Точность_1"})
-        comb = comb.fillna(0)
-        melt = comb.melt(id_vars="Алгоритм",
-                         value_vars=["Точность_1","Точность_2"],
-                         var_name="Этап", value_name="Точность")
+    letters2 = df2[df2["qtype"]=="letters"].sort_values("timestamp") \
+                                           .groupby(["user","group"], as_index=False) \
+                                           .first()
+    stat2 = (letters2.groupby("alg")
+                     .agg(Пользователей=("user","nunique"),
+                          Точность=("is_correct","mean"))
+                     .reset_index())
+    stat2["Точность"] = (stat2["Точность"]*100).round(1)
+
+    if not stat1.empty and not stat2.empty:
+        cmp = (pd.merge(stat1[["Алгоритм","Точность"]],
+                        stat2.rename(columns={"alg":"Алгоритм"})[["Алгоритм","Точность"]],
+                        on="Алгоритм", how="outer", suffixes=("_1","_2"))
+                 .fillna(0))
+        melt = cmp.melt(id_vars="Алгоритм", var_name="Этап", value_name="Точность")
         melt["Этап"] = melt["Этап"].map({"Точность_1":"Этап 1","Точность_2":"Этап 2"})
+
         fig_cmp = px.bar(melt, x="Алгоритм", y="Точность", color="Этап",
-                         barmode="group", text="Точность",
-                         title="Сравнение точности буквенных вопросов (Этап 1 vs Этап 2)",
+                         barmode="stack", text="Точность",
+                         title="Буквенные вопросы: сравнение точности (Этап 1 vs Этап 2)",
                          labels={"Алгоритм":"Алгоритм","Точность":"Точность, %"})
         st.plotly_chart(fig_cmp, use_container_width=True)
+
+   
+    st.subheader("Данные")
+    csv = df.to_csv(index=False).encode("utf-8-sig")
+    st.download_button("💾 Скачать CSV", csv, "human_study_results.csv", "text/csv")
+    cols = ["timestamp","Пользователь","qnum","image_id","Алгоритм","Тип",
+            "Вопрос","Ответ","Правильный_ответ","Время_сек","is_correct","session_id"]
+    st.dataframe(df[[c for c in cols if c in df.columns]], use_container_width=True, height=500)
+    st.caption(f"Данные обновляются каждые {REFRESH_SEC} секунд")
+
 
 
 with tab2:
     df2_all = load_stage2()
-    if df2_all.empty:
+    if df2_all.empty():
         st.warning("Нет данных второго этапа.")
         st.stop()
 
-    cnt2   = df2_all.groupby("user")["qnum"].count()
-    users2 = cnt2[cnt2 == 15].index
-    df2    = df2_all[df2_all["user"].isin(users2)]
+    full2 = df2_all.groupby("user")["qnum"].count()
+    df2   = df2_all[df2_all["user"].isin(full2[full2==15].index)]
 
-
-    tot2   = len(df2)
-    corr2  = df2["is_correct"].mean()*100 if tot2 else 0
-    mean2  = df2["Время_сек"].mean() if tot2 else 0
-    med2   = df2["Время_сек"].median() if tot2 else 0
-    dont2  = df2["answer"].astype(str).str.lower().str.startswith("затруд").sum()
+ 
+    tot2  = len(df2)
+    corr2 = df2["is_correct"].mean()*100 if tot2 else 0
+    mean2 = df2["Время_сек"].mean() if tot2 else 0
+    med2  = df2["Время_сек"].median() if tot2 else 0
+    dont2 = df2["answer"].astype(str).str.lower().str.startswith("затруд").sum()
     a,b,c,d,e = st.columns(5)
     a.metric("Всего ответов",   f"{tot2:,}".replace(',',' '))
     b.metric("Корректность",    f"{corr2:.1f}%")
     c.metric("Среднее время",   f"{mean2:.2f} с")
     d.metric("Медианное время", f"{med2:.2f} с")
     e.metric("«Затрудняюсь»",   f"{dont2:,}".replace(',',' '))
+    st.divider()
 
 
-    df_l2 = df2[df2["qtype"]=="letters"].sort_values("timestamp")
-    df_l2 = df_l2.groupby(["user","group"], as_index=False).first()
-    stat_l2 = (df_l2.groupby("alg")
-                     .agg(Пользователей=("user","nunique"),
-                          Точность=("is_correct","mean"))
-                     .reset_index())
+    letters2 = df2[df2["qtype"]=="letters"].sort_values("timestamp") \
+                                           .groupby(["user","group"], as_index=False) \
+                                           .first()
+    stat_l2 = (letters2.groupby("alg")
+                       .agg(Пользователей=("user","nunique"),
+                            Точность=("is_correct","mean"))
+                       .reset_index())
     stat_l2["Точность"] = (stat_l2["Точность"]*100).round(1)
 
     st.subheader("Буквенные вопросы: второй этап")
@@ -206,13 +257,13 @@ with tab2:
     st.plotly_chart(fig_l2, use_container_width=True)
     st.dataframe(stat_l2, use_container_width=True)
 
-
+    
     df_c2 = df2[df2["qtype"]=="corners"]
     df_c2 = df_c2[df_c2["alg"].isin(["socolov_lab_result","socolov_rgb_result"])]
     stat_c2 = (df_c2.groupby("alg")
-                     .agg(Ответов=("user","count"),
-                          Точность=("is_correct","mean"))
-                     .reset_index())
+                       .agg(Ответов=("user","count"),
+                            Точность=("is_correct","mean"))
+                       .reset_index())
     stat_c2["Точность"] = (stat_c2["Точность"]*100).round(1)
 
     st.subheader("Вопросы про углы: второй этап")
