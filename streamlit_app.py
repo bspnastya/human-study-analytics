@@ -221,12 +221,7 @@ with tab1:
     df2_all = load_stage2()
     full2 = df2_all.groupby("user")["qnum"].count()
     df2 = df2_all[df2_all["user"].isin(full2[full2 == 15].index)]
-    letters2 = (
-        df2[df2["qtype"] == "letters"]
-        .sort_values("timestamp")
-        .groupby(["user", "group"], as_index=False)
-        .first()
-    )
+    letters2 = df2[df2["qtype"] == "letters"]
     stat2 = (
         letters2.groupby("alg")
         .agg(Пользователей=("user", "nunique"), Точность=("is_correct", "mean"))
