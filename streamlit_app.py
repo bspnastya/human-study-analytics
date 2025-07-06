@@ -344,12 +344,7 @@ with tab2:
     e.metric("«Затрудняюсь»", f"{dont2:,}".replace(",", " "))
     st.divider()
 
-    letters2 = (
-        df2[df2["qtype"] == "letters"]
-        .sort_values("timestamp")
-        .groupby(["user", "group"], as_index=False)
-        .first()
-    )
+    letters2 = df2[df2["qtype"] == "letters"]
     stat_l2 = (
         letters2.groupby("alg")
         .agg(Пользователей=("user", "nunique"), Точность=("is_correct", "mean"))
