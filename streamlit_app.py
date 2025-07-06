@@ -222,7 +222,7 @@ with tab1:
     full2 = df2_all.groupby("user")["qnum"].count()
     df2 = df2_all[df2_all["user"].isin(full2[full2 == 15].index)]
     letters2 = df2[df2["qtype"] == "letters"]
-    stat_l2 = (
+    stat2 = (
     letters2.groupby("alg")
             .agg(Пользователей=("user", "nunique"),
                  Точность=("is_correct", "mean"))
