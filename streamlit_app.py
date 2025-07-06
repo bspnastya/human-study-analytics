@@ -222,11 +222,12 @@ with tab1:
     full2 = df2_all.groupby("user")["qnum"].count()
     df2 = df2_all[df2_all["user"].isin(full2[full2 == 15].index)]
     letters2 = df2[df2["qtype"] == "letters"]
-    stat2 = (
-        letters2.groupby("alg")
-        .agg(Пользователей=("user", "nunique"), Точность=("is_correct", "mean"))
-        .reset_index()
-    )
+    stat_l2 = (
+    letters2.groupby("alg")
+            .agg(Пользователей=("user", "nunique"),
+                 Точность=("is_correct", "mean"))
+            .reset_index()
+)
     stat2["Точность"] = (stat2["Точность"] * 100).round(1)
 
     if not stat1.empty and not stat2.empty:
