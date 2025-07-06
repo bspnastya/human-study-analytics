@@ -426,7 +426,38 @@ with tab2:
 )
     fig_c2_cnt.update_layout(legend_title_text="")
     st.plotly_chart(fig_c2_cnt, use_container_width=True)
+    df_c2 = df2[df2["qtype"] == "corners"].copy()          # тот же срез, что выше
 
+    df_c2["inc_zat"] = (
+    (~df_c2["is_correct"]) &
+    df_c2["answer"].astype(str).str.lower().str.startswith("затруд")
+)
+    df_c2["inc_no"] = (
+    (~df_c2["is_correct"]) &
+    (df_c2["answer"].astype(str).str.lower().str.strip() == "нет")
+)
+    df_c2["inc_yes"] = (
+    (~df_c2["is_correct"]) &
+    (df_c2["answer"].astype(str).str.lower().str.strip().isin(["да", "yes", "y"]))
+)
+    details_c2 = (
+    df_c2.groupby("alg")
+         .agg(
+             Всего            = ("qnum",       "count"),
+             Правильных       = ("is_correct", "sum"),
+             Ошибочных        = ("is_correct", lambda s: (~s).sum()),
+             Ошибка_Нет       = ("inc_no",     "sum"),
+             Ошибка_Да        = ("inc_yes",    "sum"),
+             Ошибка_Затрудняюсь = ("inc_zat",  "sum"),
+         )
+         .assign(
+             Точность = lambda x: (x["Правильных"] / x["Всего"] * 100).round(1)
+         )
+         [["Всего","Правильных","Ошибочных",
+           "Ошибка_Нет","Ошибка_Да","Ошибка_Затрудняюсь","Точность"]]
+)
+    st.subheader("Угловые вопросы: подробная статистика ошибок")
+    st.dataframe(details_c2, use_container_width=True)
     
     st.subheader("Статистика по изображениям")
     pic2 = (
