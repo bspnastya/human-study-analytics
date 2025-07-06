@@ -363,6 +363,27 @@ with tab2:
     fig_l2.update_traces(marker_color=highlight_max(stat_l2["Точность"]))
     st.plotly_chart(fig_l2, use_container_width=True)
     st.dataframe(stat_l2, use_container_width=True)
+    letters_counts = (
+    letters2.groupby("alg")
+            .agg(
+                Правильных=("is_correct", "sum"),
+                Ошибочных=("is_correct", lambda s: (~s).sum())
+            )
+            .reset_index()
+            .melt(id_vars="alg", var_name="Статус", value_name="Количество")
+)    
+    fig_l2_cnt = px.bar(
+    letters_counts,
+    x="alg",
+    y="Количество",
+    color="Статус",
+    barmode="stack",
+    text="Количество",
+    title="Буквенные вопросы: количество правильных и ошибочных ответов",
+    labels={"alg": "Алгоритм"},
+)
+    fig_l2_cnt.update_layout(legend_title_text="")
+    st.plotly_chart(fig_l2_cnt, use_container_width=True)
 
     df_c2 = df2[df2["qtype"] == "corners"]
     df_c2 = df_c2[df_c2["alg"].isin(["socolov_lab_result", "socolov_rgb_result"])]
