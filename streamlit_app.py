@@ -428,7 +428,7 @@ with tab2:
     st.plotly_chart(fig_c2_cnt, use_container_width=True)
 
     
-    st.subheader("Статистика по изображениям (этап 2)")
+    st.subheader("Статистика по изображениям")
     pic2 = (
         df2.groupby("group")
         .agg(
