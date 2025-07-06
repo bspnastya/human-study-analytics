@@ -405,7 +405,29 @@ with tab2:
     fig_c2.update_traces(marker_color=highlight_max(stat_c2["Точность"]))
     st.plotly_chart(fig_c2, use_container_width=True)
     st.dataframe(stat_c2, use_container_width=True)
+    corn_counts = (
+    df_c2.groupby("alg")
+         .agg(
+             Правильных=("is_correct", "sum"),
+             Ошибочных=("is_correct", lambda s: (~s).sum())
+         )
+         .reset_index()
+         .melt(id_vars="alg", var_name="Статус", value_name="Количество")
+)
+    fig_c2_cnt = px.bar(
+    corn_counts,
+    x="alg",
+    y="Количество",
+    color="Статус",
+    barmode="group",              
+    text="Количество",
+    title="Угловые вопросы: количество правильных и ошибочных ответов",
+    labels={"alg": "Алгоритм"},
+)
+    fig_c2_cnt.update_layout(legend_title_text="")
+    st.plotly_chart(fig_c2_cnt, use_container_width=True)
 
+    
     st.subheader("Статистика по изображениям (этап 2)")
     pic2 = (
         df2.groupby("group")
